@@ -119,7 +119,7 @@ public class PoCApplication {
     }
 	
 	public static void main(String[] args) {
-		//dummy data
+		//dummy data to be loaded
 		/*customers 
         = new HashMap<String, Customer>();
 		Customer testCustomer = new Customer("91882345", "johndoe", "password", 125.50, 15);
