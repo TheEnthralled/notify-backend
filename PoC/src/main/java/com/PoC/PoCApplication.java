@@ -83,6 +83,22 @@ public class PoCApplication {
     		return false;//throw exception
     }
     
+  //get method
+    @RequestMapping(path = "/{userID}/inbox/{notifID}")
+    public @ResponseBody String getNotification(@PathVariable("userID") int userID, @PathVariable("notifID") int notifID) {
+    	
+    	//json format
+    	String notification = "{\"messages\":[{\"subject\":\"YourCapitalOneCreditCardStatementisReady\",\"body\":\"YourCapitalOneCreditCardStatementisReady\",\"attachments\":[],\"sender\":\"CapitalOne\",\"date\":\"2017-01-01T00:00:00.000Z\"},{\"subject\":\"WelcometoCapitalOne!\",\"body\":\"WelcometoCapitalOne!\",\"attachments\":[],\"sender\":\"CapitalOne\",\"date\":\"2017-01-01T00:00:00.000Z\"}]}";
+    	
+    	if((userID>0)&&(notifID>0))
+		return notification;
+    	
+    	//search through database, find appropriate notification object, and mark its visible status as tru
+    	
+    	else
+    		return "error";//throw exception
+    }
+    
     //markAsRead function
     @RequestMapping(path = "/{userID}/inbox/{notifID}/markRead")
     public @ResponseBody boolean markRead(@PathVariable("userID") int userID, @PathVariable("notifID") int notifID) {
