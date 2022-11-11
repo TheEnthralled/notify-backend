@@ -30,6 +30,9 @@ public class MainController
 		temp.setBalance(balance);
 		temp.setAccountID(accountID);
 		customerRepository.save(temp);
+
+		System.out.println("pr");
+
 		return "Saved";
 	}
 	
