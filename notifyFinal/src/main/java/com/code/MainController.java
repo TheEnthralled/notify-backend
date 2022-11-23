@@ -12,6 +12,8 @@ import java.util.Iterator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -437,17 +439,17 @@ public class MainController
 	//returns true if both username and password are correct
 	@CrossOrigin
 	@RequestMapping(value = "/login", method = RequestMethod.GET)
-	public @ResponseBody boolean login(@RequestParam String username, @RequestParam String password)
+	public @ResponseBody ResponseEntity<String> login(@RequestParam String username, @RequestParam String password)
 	{
 		ArrayList<String> usernames = customerRepository.getUsernames();
 		ArrayList<String> passcodes = customerRepository.getPasscodes();
 		
 		if(usernames.contains(username))
 			if(passcodes.contains(password))
-				return true;
+				return new ResponseEntity<>(HttpStatus.OK);
 		
 		
-		return false;
+		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 	}
 	
 	//returns number of unread messages associated with user
