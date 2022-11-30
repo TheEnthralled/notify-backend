@@ -1,5 +1,6 @@
 package com.code;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.code.Customer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
 @RequestMapping("/user")
@@ -47,15 +50,17 @@ public class MainController
 	
 	@CrossOrigin
 	@PostMapping("/savecustomer")
-	public @ResponseBody String saveCustomer(@RequestParam String cKey, @RequestParam int cType, @RequestParam String username, @RequestParam String password, @RequestParam double balance, @RequestParam int accountID)
+	public @ResponseBody String saveCustomer(@RequestParam String cKey, @RequestParam int cType, @RequestParam String username, @RequestParam String password, @RequestParam double balance, @RequestParam int accountID, @RequestParam String firstName, @RequestParam String lastName)
 	{
-		Customer temp = new Customer(cKey, cType, username, password, balance, accountID);
+		Customer temp = new Customer(cKey, cType, username, password, balance, accountID, firstName, lastName);
 		System.out.println("cKey"+temp.getCustomerKey());
 		System.out.println("cType"+temp.getCustomerType());
 		System.out.println("username"+temp.getUsername());
 		System.out.println("password"+temp.getPassword());
 		System.out.println("balance"+temp.getBalance());
 		System.out.println("accountID"+temp.getAccountID());
+		System.out.println("first_name"+temp.getFirst_name());
+		System.out.println("last_name"+temp.getLast_name());
 		customerRepository.save(temp);	
 		return "Saved";
 	}
@@ -75,16 +80,39 @@ public class MainController
 	}
 	
 	@CrossOrigin
+	@RequestMapping(value = "/firstname", method = RequestMethod.GET)
+	public @ResponseBody String getFirstName(@RequestParam String username)
+	{
+		String firstName="";
+		
+		try
+		{
+			firstName = customerRepository.getFirstNameGivenUser(username);
+			System.out.println(firstName);
+		}
+		catch(Exception e)
+		{
+			firstName = "defaultFirstName";
+		}
+		
+		return "\""+firstName+"\"";
+	}
+	
+	@CrossOrigin
 	@PostMapping("/savetemplate")
 	public @ResponseBody String saveTemplate(@RequestParam String subject, @RequestParam String body)
 	{
 		Template temp = new Template();
-		temp.setSubject(subject);
-		temp.setBody(body);
+		temp.setSubject("You're projected to owe a balance when your loan matures on <date>");
+		temp.setBody("\\nRe: Your auto account ending in <last 4 digits accountNumber>\\n\\n<customer Name>,\\n\\nDue to events that occurred during the life of your loan, you're projected to have a balance due when your loan matures on <date>. You can choose to lower the balance due at the end of your loan now by making an additional one-time payment, or adding a little extra to your current monthly payments.\\n\\nNot sure how this happened? Activate your account in a few easy steps to check out our Auto Loan Tracker and see more details.");
+		templateRepository.save(temp);
 		
-		templates.add(temp);
-
-		return "Saved"+templates.size();
+		Template temp2 = new Template();
+		temp2.setSubject("Your email address was updated");
+		temp2.setBody("\\nSuccess!\\n\\nYou updated your email address on <date>\\n\\nWe're providing this notification for your account security, and no additional action is required.\\n\\nIf you did not make this change, please visit our Information Protection Center.\\n\\nThanks for choosing Capital One®.");
+		templateRepository.save(temp2);
+		
+		return "Saved";
 	}
 	
 	@CrossOrigin
@@ -110,8 +138,8 @@ public class MainController
 			
 			resultSet+="{";
 			resultSet+="\"id\": "+currentNotif.getNotification_id()+", ";
-			resultSet+="\"title\": \""+fillBlanks(username, currentNotif, templates.get(currentNotif.getTemplate_id()).getSubject())+"\", ";
-			resultSet+="\"description\": \""+fillBlanks(username, currentNotif, templates.get(currentNotif.getTemplate_id()).getBody())+"\", ";
+			resultSet+="\"title\": \""+fillBlanks(currentNotif.getNotification_id(), templateRepository.getTemplate(currentNotif.getTemplate_id()).getSubject())+"\", ";
+			resultSet+="\"description\": \""+fillBlanks(currentNotif.getNotification_id(), templateRepository.getTemplate(currentNotif.getTemplate_id()).getBody())+"\", ";
 			resultSet+="\"time\": \""+currentNotif.getTimestamp()+"\", ";
 			
 			if(currentNotif.isIs_email())
@@ -138,13 +166,14 @@ public class MainController
 		return resultSet;
 	}
 	
-	public String fillBlanks(String username, Notification input, String raw)
+	public String fillBlanks(int notif_id, String raw)
 	{
-		String digits=""+customerRepository.getAccountIdGivenUser(username);
-		digits=digits.substring(digits.length()-4);
+		/*String digits=""+customerRepository.getAccountIdGivenUser(username);
+		digits=digits.substring(digits.length()-4);*/
 		
-		HashMap<String, String> tempData = input.getData();
-		tempData.put("last 4 digits accountNumber", digits);
+		
+		Map<String, String> tempData = getData(notif_id);
+		//tempData.put("last 4 digits accountNumber", digits);
 		
 		for(String key: tempData.keySet())
 		{
@@ -158,11 +187,45 @@ public class MainController
 	}
         
 	
+	//get data hooks in raw form
+	public  Map<String, String> getData (@RequestParam int notification_id)
+	{
+		String rawData = notificationRepository.getDataHooks(notification_id);
+		System.out.println(rawData);
+		
+		
+		//String fake = "{\"customer Name\":\"Pavan\", \"date\":\"10/14/2024\", \"last 4 digits accountNumber\":\"4859\"}";
+		ObjectMapper mapper = new ObjectMapper();
+		
+		Map<String, String> refinedData = new HashMap<>();
+		
+		try
+		{
+			refinedData = mapper.readValue(rawData, Map.class);
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+		
+		return refinedData;
+	}
+	
+	//get data hooks
+	@CrossOrigin
+	@RequestMapping(value = "/getdata", method = RequestMethod.GET)
+	public @ResponseBody String getData (@RequestParam String username)
+	{
+		String firstName = customerRepository.getFirstNameGivenUser(username);
+		
+		return firstName;
+	}
+
 	//newest to oldest emails
 	@CrossOrigin
 	@RequestMapping(value = "/emails/newest", method = RequestMethod.GET)
 	public @ResponseBody String newestEmails(@RequestParam String username)
-	{
+	{	
 		Collection<Notification> notifs = notificationRepository.getNewestEmails(username);
 		
 		String resultSet="[";
@@ -173,8 +236,8 @@ public class MainController
 			
 			resultSet+="{";
 			resultSet+="id: "+currentNotif.getNotification_id()+", ";
-			resultSet+="subject: "+templates.get(currentNotif.getTemplate_id()).getSubject()+",";
-			resultSet+="body: "+templates.get(currentNotif.getTemplate_id()).getBody()+",";
+			resultSet+="subject: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getSubject()+",";
+			resultSet+="body: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getBody()+",";
 			resultSet+="time: "+currentNotif.getTimestamp()+", ";
 				resultSet+="type: email, ";
 			if(currentNotif.isIs_read())
@@ -212,8 +275,8 @@ public class MainController
 			
 			resultSet+="{";
 			resultSet+="id: "+currentNotif.getNotification_id()+", ";
-			resultSet+="subject: "+templates.get(currentNotif.getTemplate_id()).getSubject()+",";
-			resultSet+="body: "+templates.get(currentNotif.getTemplate_id()).getBody()+",";
+			resultSet+="subject: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getSubject()+",";
+			resultSet+="body: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getBody()+",";
 			resultSet+="time: "+currentNotif.getTimestamp()+", ";
 			resultSet+="type: email, ";
 			if(currentNotif.isIs_read())
@@ -250,8 +313,8 @@ public class MainController
 			
 			resultSet+="{";
 			resultSet+="id: "+currentNotif.getNotification_id()+", ";
-			resultSet+="subject: "+templates.get(currentNotif.getTemplate_id()).getSubject()+",";
-			resultSet+="body: "+templates.get(currentNotif.getTemplate_id()).getBody()+",";
+			resultSet+="subject: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getSubject()+",";
+			resultSet+="body: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getBody()+",";
 			resultSet+="time: "+currentNotif.getTimestamp()+", ";
 			resultSet+="type: text, ";
 			if(currentNotif.isIs_read())
@@ -288,8 +351,8 @@ public class MainController
 			
 			resultSet+="{";
 			resultSet+="id: "+currentNotif.getNotification_id()+", ";
-			resultSet+="subject: "+templates.get(currentNotif.getTemplate_id()).getSubject()+",";
-			resultSet+="body: "+templates.get(currentNotif.getTemplate_id()).getBody()+",";
+			resultSet+="subject: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getSubject()+",";
+			resultSet+="body: "+templateRepository.getTemplate(currentNotif.getTemplate_id()).getBody()+",";
 			resultSet+="time: "+currentNotif.getTimestamp()+", ";
 			resultSet+="type: text, ";
 			if(currentNotif.isIs_read())
@@ -446,10 +509,10 @@ public class MainController
 		
 		if(usernames.contains(username))
 			if(passcodes.contains(password))
-				return new ResponseEntity<>(HttpStatus.OK);
+				return new ResponseEntity<>("true", HttpStatus.OK); 	//return code 200
 		
 		
-		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<>("\"Wrong username or password\"", HttpStatus.BAD_REQUEST); 	//return code 400
 	}
 	
 	//returns number of unread messages associated with user

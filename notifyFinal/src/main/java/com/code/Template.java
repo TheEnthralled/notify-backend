@@ -19,7 +19,16 @@ public class Template {
 	private String subject;
 	
 	@Column(length = Integer.MAX_VALUE)
-	private String body;
+	private String body1;
+	
+	@Column(length = Integer.MAX_VALUE)
+	private String body2;
+	
+	@Column(length = Integer.MAX_VALUE)
+	private String body3;
+	
+	@Column(length = Integer.MAX_VALUE)
+	private String body4;
 
 	public Template(String string, String string2) {
 		setSubject(string);
@@ -30,7 +39,10 @@ public class Template {
 	public Template()
 	{
 		subject="defaultSubject";
-		body="defaultBody";
+		body1="defaultBody1";
+		body2="defaultBody2";
+		body3="defaultBody3";
+		body4="defaultBody4";
 	}
 	
 	public String getSubject() {
@@ -42,11 +54,19 @@ public class Template {
 	}
 
 	public String getBody() {
-		return body;
+		return body1+body2+body3+body4;
 	}
 
-	public void setBody(String body) {
-		this.body = body;
+	public void setBody(String input) 
+	{
+		int length = input.length();
+        int first = length/4;
+        int second = first*2;
+        int third = first*3;
+        body1 = input.substring(0, first);
+        body2 = input.substring(first, second);
+        body3 = input.substring(second, third);
+        body4 = input.substring(third, length);
 	}
 
 }
